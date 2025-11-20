@@ -7,7 +7,8 @@ def ler_entrada():
         if not entrada_bytes:
             return None
             
-        entrada_str = entrada_bytes.decode('utf-8') #tranformando a entrada em bytes para string
+        entrada_str = entrada_bytes.decode('utf-8').strip() #tranformando a entrada em bytes para string
+        print(entrada_str)
 
         #if not entrada_str:
             #return []
