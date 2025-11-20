@@ -28,9 +28,4 @@ def executar_comando(args):
     if args[0] == 'exit':
         os.write(1, "Saindo do shell...\n".encode('utf-8'))
         sys.exit(0)
-
-    elif args[0] == 'echo':
-        saida = args,"teste"
-        os.write(1, (args,))
-
     pass 
