@@ -11,6 +11,8 @@ se PID > 0: pai
 se PID = 0: filho
 se PID < 0: erro
 
+
+
 eu preciso criar com o fork. Usando o exec eu clono e com o wait eu faço a transição
 
-tentar usar chdir e environ para fazer um
+tentar usar chdir e environ para fazer um cd
