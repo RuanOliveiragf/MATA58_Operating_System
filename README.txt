@@ -10,3 +10,5 @@ pid = os.fork(), a variável pid não guarda o seu próprio número. Ela guarda 
 se PID > 0: pai
 se PID = 0: filho
 se PID < 0: erro
+
+eu preciso criar com o fork. Usando o exec eu clono e com o wait eu faço a transição
