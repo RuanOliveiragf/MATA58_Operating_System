@@ -10,12 +10,13 @@ def exibir_prompt():
 def main():
     while True:
         exibir_prompt()
-        
-        comandos = commands.ler_entrada()
-        if comandos is None:
+
+        comando_tokens = commands.ler_entrada()
+        #comandos = commands.ler_entrada()
+        if comando_tokens is None:
             break
             
-        commands.executar_comando(comandos)
+        commands.executar_comando(comando_tokens)
 
 if __name__ == "__main__":
     main()
