@@ -20,3 +20,11 @@ def ler_entrada():
         os.write(2, msg_erro) # 2 é stderr
         return []
     
+def executar_comando(args):
+    if not args:
+        return
+
+    if args[0] == 'exit':
+        os.write(1, "Saindo do shell...\n".encode('utf-8'))
+        sys.exit(0)
+    pass 
