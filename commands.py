@@ -30,9 +30,18 @@ def executar_comando(args):
     if args[0] == 'exit':
         os.write(1, "Saindo do shell...\n".encode('utf-8'))
         sys.exit(0)
+
+    if args[0] == 'cd':
+        try:
+            path = args[1] if len(args) > 1 else os.environ.get('HOME', '.')
+            os.chdir(path)
+        except OSError as e:
+            msg = f"cd: erro ao mudar para '{path}': {e}\n".encode('utf-8')
+            os.write(2, msg)
+        return
     
     try:
-        pid = os.fork() #cria o processo
+        pid = os.fork() #cria o processo (vou criar um clone exato do meu sctipe)
         print(pid)
 
         if pid == 0:#processo filho
