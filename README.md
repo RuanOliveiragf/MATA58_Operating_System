@@ -68,7 +68,7 @@ Mini-Shell/
 ├── Dockerfile           # Configuração da imagem Linux para o projeto
 ├── README.md            # Documentação, instruções e limitações
 ├── bash_structure.py    # Arquivo principal (Loop principal e Prompt)
-├── commands.py          # Módulo com a lógica de fork, exec, wait, read/write e cd
+├── commands.py          # Módulo com a lógica de fork, exec, wait, read/write
 ```
 
 ## Gerenciamento de Interface e Loop Principal
@@ -77,7 +77,7 @@ O arquivo bash_structure.py atua como o ponto de entrada do programa e é respon
 
 Abaixo, detalhamos as duas estruturas fundamentais deste módulo: a exibição do prompt via chamadas de sistema e o loop de execução.
 
-1. Exibição do Prompt com os.write
+### 1. Exibição do Prompt com os.write
 Diferente de scripts Python comuns que utilizam print(), este projeto utiliza a syscall os.write para manipular a saída padrão (descritor de arquivo 1). Isso garante um controle de baixo nível sobre o buffer de saída.
 
 ```python
@@ -92,7 +92,7 @@ def exibir_prompt():
 ```
 Neste trecho, a função converte a string "> " para bytes antes de invocar a escrita direta no descritor de arquivo 1 (tela), cumprindo o requisito de manipulação direta de I/O.
 
-2. O Loop Principal (REPL)
+### 2. O Loop Principal (REPL)
 A função main() orquestra o funcionamento do shell. Ela mantém um laço infinito (while True) que só é interrompido quando um sinal de término é recebido. 
 
 ```python
@@ -121,6 +121,78 @@ if __name__ == "__main__":
 
 ## Comandos
 
+O arquivo `commands.py` é responsável por interpretar e executar as ações solicitadas. A função `executar_comando(args)` decide se o comando deve ser tratado internamente pelo Python (built-in) ou se deve ser executado como um processo do sistema operacional.
+
+### 1. Comandos Internos (Built-ins)
+Certos comandos precisam alterar o estado do próprio processo do shell (como mudar de diretório ou encerrar a execução). Eles são interceptados antes da criação de novos processos.
+
+**Encerrando o Shell (`exit`)**
+Quando o usuário digita `exit`, utilizamos `sys.exit(0)` para fechar o loop principal e encerrar o programa suavemente.
+
+```python
+if args[0] == 'exit':
+    # Escreve mensagem de saída no descritor 1 (stdout)
+    os.write(1, "Saindo do shell...\n".encode('utf-8'))
+    sys.exit(0) # Encerra o interpretador Python
+```
+
+**Navegação de Diretórios** (`cd`) O comando `cd` não pode ser um binário externo, pois ele precisa mudar o diretório de trabalho do processo atual (o shell). Utilizamos `os.chdir` para isso.
+
+```python
+if args[0] == 'cd':
+    try:
+        # Se o usuário não passar argumentos (apenas 'cd'), vai para a HOME
+        # Se passar argumentos (ex: 'cd /tmp'), usa args[1]
+        path = args[1] if len(args) > 1 else os.environ.get('HOME', '.')
+        
+        # Syscall que altera o diretório de trabalho do processo atual
+        os.chdir(path)
+    except OSError as e:
+        # Em caso de erro, como diretório inexistente
+        msg = f"cd: erro ao mudar para '{path}': {e}\n".encode('utf-8')
+        os.write(2, msg)
+    return
+```
+
+### 2. Execução de Comandos Externos (Fork, Exec, Wait)
+Para comandos do sistema (como ls, cat, echo), utilizamos o modelo clássico do Unix de criação de processos. Isso envolve três chamadas de sistema principais coordenadas dentro da função executar_comando:
+
+1. `os.fork()`: Clona o processo atual.
+
+2. `os.execvp()`: Substitui o processo clonado pelo comando desejado.
+
+3. `os.wait()`: Faz o processo original esperar o término do clonado.
+
+```python
+try:
+    # 1. FORK: Cria uma cópia idêntica do processo atual.
+    # A partir daqui, temos dois processos rodando o mesmo código simultaneamente.
+    # pid retorna 0 para o processo novo (Filho) e > 0 para o processo original (Pai).
+    pid = os.fork() 
+
+    if pid == 0: # Processo Filho
+        try:
+            # 2. EXEC: Substitui a código do filho pelo código/programa 'args[0]'
+            # args é a lista de argumentos (ex: ['ls', '-la'])
+            os.execvp(args[0], args)
+        except OSError:
+            # Se o exec falhar, imprime erro e mata o filho
+            erro_msg = f"Erro: Comando '{args[0]}' não encontrado.\n".encode('utf-8')
+            os.write(2, erro_msg)
+            sys.exit(1) # Encerra o filho com erro
+            
+    elif pid > 0: # Processo Pai 
+        # 3. WAIT: O Shell dorme e aguarda o filho (pid > 0) terminar sua execução.
+        os.wait()
+        
+    else:
+        # Caso onde o sistema operacional falha ao criar um processo
+        os.write(2, "Erro crítico: Falha no fork.\n".encode('utf-8'))
+
+except OSError as e:
+    msg = f"Erro de sistema: {e}\n".encode('utf-8')
+    os.write(2, msg)
+```
 
 -----
 
@@ -139,6 +211,93 @@ if __name__ == "__main__":
 
 ## Exemplos
 
+Abaixo apresentamos um log real de uso do shell, demonstrando a execução de comandos externos, manipulação de arquivos, navegação de diretórios e tratamento de erros. Note que os números exibidos antes da saída (ex: `9534`, `0`) correspondem aos PIDs dos processos criados via `fork()`.
+
+```text
+> echo Ola Mundo
+9534
+0
+Ola Mundo
+
+> ls -la
+9588
+0
+total 24
+drwxrwxrwx 1 root   root   4096 Nov 29 18:32 .
+drwxr-xr-x 3 root   root   4096 Nov 21 19:20 ..
+drwxrwxrwx 1 root   root   4096 Nov 21 19:37 .devcontainer
+drwxrwxrwx 1 root   root   4096 Nov 29 18:32 .git
+-rw-r--r-- 1 vscode vscode   18 Nov 21 19:37 .gitignore
+-rw-r--r-- 1 vscode vscode 9624 Nov 29 19:21 README.md
+-rwxrwxrwx 1 root   root    576 Nov 21 15:33 README.txt
+drwxrwxrwx 1 root   root   4096 Nov 29 18:33 __pycache__
+-rw-r--r-- 1 vscode vscode  695 Nov 21 22:31 bash_structure.py
+-rwxrwxrwx 1 root   root   1822 Nov 29 18:32 commands.py
+-rwxrwxrwx 1 root   root    128 Nov 21 15:33 test_token.py
+
+> cat bash_structure.py
+9934
+0
+import os, sys
+import commands
+
+def exibir_prompt():
+    #podemos usar a write [https://docs.python.org/pt-br/3/library/os.html#os.write](https://docs.python.org/pt-br/3/library/os.html#os.write)
+    mensagem = "> ".encode('utf-8') #write só escreve em bytes, então precisa pegar em string e transformar para bytes [https://docs.python.org/pt-br/3/library/stdtypes.html#str.encode](https://docs.python.org/pt-br/3/library/stdtypes.html#str.encode)
+    #os.write(1, mensagem)
+    os.write(1, mensagem)
+
+def main():
+    while True:
+        exibir_prompt()
+
+        comando_tokens = commands.ler_entrada()
+        #comandos = commands.ler_entrada()
+        if comando_tokens is None:
+            break
+            
+        commands.executar_comando(comando_tokens)
+
+if __name__ == "__main__":
+    main()
+
+> pwd
+10040
+0
+/workspaces/MATA58_Operating_System
+
+> cd ..
+> pwd
+10125
+0
+/workspaces
+
+> teste_erro
+10196
+0
+Erro: Comando 'teste_erro' não encontrado.
+
+> mkdir teste  
+11332
+0
+
+> ls
+11363
+0
+README.md  README.txt  __pycache__  bash_structure.py  commands.py  test_token.py  teste
+
+> rm -d teste
+0
+11550
+
+> ls -a
+0
+11561
+.  ..  .devcontainer  .git  .gitignore  README.md  README.txt  __pycache__  bash_structure.py  commands.py  test_token.py
+
+> exit
+Saindo do shell...
+```
 
 ## Dificuldades enfrentadas e aprendizados
 
