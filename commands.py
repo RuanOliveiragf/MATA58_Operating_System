@@ -4,7 +4,8 @@ import sys
 #biblioteca tty: https://docs.python.org/3/library/tty.html
 import termios #a termios vai me permitir que eu consiga usar as teclas especiais como tab, backspace sem precisar dar um enter antes
                #o caractere vai ser enviado ao python assim que pressionado, ou seja, nao vai para o buffer temporario
-import tty
+import tty #com o tty eu envio toda tecla imediatamente
+
 
 #cores de erro para o shell
 cor_vermelho = "\033[91m"
@@ -25,7 +26,7 @@ def _obter_caractere():
 #2 = stderr
     try:
         old_settings = termios.tcgetattr(0)
-        tty.setraw(0)
+        tty.setraw(0) #envio a tecla imediatamente sem intermedio do terminal
         ch = os.read(0, 1) #leio apenas 1 byte
     except termios.error:
         return os.read(0, 1)
