@@ -42,7 +42,7 @@ def executar_comando(args):
     
     try:
         pid = os.fork() #cria o processo (vou criar um clone exato do meu sctipe)
-        print(pid)
+        #print(pid)
 
         if pid == 0:#processo filho
             try:
