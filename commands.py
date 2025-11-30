@@ -38,31 +38,31 @@ def _obter_caractere():
 def _listar_opcoes_autocomplete(prefixo):
 
     try:
-        arquivos = os.listdir('.')
+        arquivos = os.listdir('.') #listo todos os arquivos e pastas do diretorio atual
         opcoes = []
         
         #filtro os arquivos que começam com o prefixo
-        for f in arquivos:
-            if f.startswith(prefixo):
-                opcoes.append(f)
-                
+        for f in arquivos: #itero sobre todos os arquivos e pastas
+            if f.startswith(prefixo): #o que comecar com o prefixo eu seleciono para adicionar na lista de opcoes
+                opcoes.append(f) #adicoino o arquivo ou pasta na lista de opcoes
         return opcoes
+    
     except OSError:
         return []
 
 def ler_entrada():
-    buffer = "" # Guarda o que o usuário está digitando
+    buffer = "" #buffer para armazenar a entrada do usuario
     
     while True:
         try:
-            char = _obter_caractere() #leio tecla por tecla. Quando pressionar qualquer tecla, essa será lida pela função
+            char = _obter_caractere() #leio tecla por tecla
             
             #se eu pressionar enter
             if char == tecla_enter_r or char == tecla_enter_n:
                 os.write(1, b'\r\n') # Pula linha visualmente
                 break
-            
-            #se eu pressionar ctrl+c
+    
+            #se eu pressionar ctrl+c 
             elif char == tecla_ctrl_c:
                 return None
             
