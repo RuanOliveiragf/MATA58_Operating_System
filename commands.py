@@ -1,6 +1,9 @@
 import os
 import sys
 
+COR_VERMELHO = "\033[91m"
+COR_RESET = "\033[0m"
+
 def ler_entrada():
 
     try:
@@ -18,7 +21,7 @@ def ler_entrada():
         return argumentos
         
     except OSError as e:
-        msg_erro = f"Erro ao ler entrada: {e}\n".encode('utf-8')
+        msg_erro = f"{COR_VERMELHO}Erro ao ler entrada: {e}{COR_RESET}\n".encode('utf-8')
         os.write(2, msg_erro)
         return []
 
@@ -36,7 +39,7 @@ def executar_comando(args):
             path = args[1] if len(args) > 1 else os.environ.get('HOME', '.')
             os.chdir(path)
         except OSError as e:
-            msg = f"cd: erro ao mudar para '{path}': {e}\n".encode('utf-8')
+            msg = f"{COR_VERMELHO}cd: erro ao mudar para '{path}': {e}{COR_RESET}\n".encode('utf-8')
             os.write(2, msg)
         return
     
@@ -48,7 +51,7 @@ def executar_comando(args):
             try:
                 os.execvp(args[0], args)
             except OSError:
-                erro_msg = f"Erro: Comando '{args[0]}' não encontrado.\n".encode('utf-8')
+                erro_msg = f"{COR_VERMELHO}Erro: Comando '{args[0]}' não encontrado.{COR_RESET}\n".encode('utf-8')
                 os.write(2, erro_msg)
                 sys.exit(1)#mata o filho com erro
                 
@@ -56,7 +59,7 @@ def executar_comando(args):
             os.wait()
             
         else:
-            os.write(2, "Erro crítico: Falha no fork.\n".encode('utf-8'))
+            os.write(2, f"{COR_VERMELHO}Erro crítico: Falha no fork.{COR_RESET}\n".encode('utf-8'))
 
     except OSError as e:
         msg = f"Erro de sistema: {e}\n".encode('utf-8')
