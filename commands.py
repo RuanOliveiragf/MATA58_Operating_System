@@ -21,18 +21,19 @@ tecla_backspace_del = b'\x7f' #forma como o linux lÊ
 tecla_backspace_bs = b'\x08' #padra asc que o windowes tambem lÊ
 
 def _obter_caractere():
+#eu entro no modo raw do terminal para ler tecla por tecla, depois devolvo ao modo canonico
 #0 = stdin
 #1 = stdout
 #2 = stderr
     try:
-        old_settings = termios.tcgetattr(0)
-        tty.setraw(0) #envio a tecla imediatamente sem intermedio do terminal
+        old_settings = termios.tcgetattr(0) #salvo as configurações atuais do terminal no modo canonico
+        tty.setraw(0) #envio a tecla imediatamente sem intermedio do terminal, entro no modo raw, ou seja, preciso fazer as funcoes manualmente (entrada de dados, teclas especiais, etc)
         ch = os.read(0, 1) #leio apenas 1 byte
-    except termios.error:
+    except termios.error: #tratamento por conta do docker
         return os.read(0, 1)
     finally:
-        termios.tcsetattr(0, termios.TCSADRAIN, old_settings)
-    return ch
+        termios.tcsetattr(0, termios.TCSADRAIN, old_settings) #retorno as configurações antigas do terminal
+    return ch #retorno o byte lido
 
 def _listar_opcoes_autocomplete(prefixo):
 
