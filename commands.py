@@ -1,29 +1,45 @@
 import os
 import sys
-import termios
+#biblioteca termios: https://docs.python.org/3/library/termios.html consigo controlar comprotamento de baixo nivel
+#biblioteca tty: https://docs.python.org/3/library/tty.html
+import termios #a termios vai me permitir que eu consiga usar as teclas especiais como tab, backspace sem precisar dar um enter antes
+               #o caractere vai ser enviado ao python assim que pressionado, ou seja, nao vai para o buffer temporario
 import tty
 
-# Definição de Cores
-COR_VERMELHO = "\033[91m"
-COR_RESET = "\033[0m"
+#cores de erro para o shell
+cor_vermelho = "\033[91m"
+cor_reset = "\033[0m"
+
+#defino as teclas 
+tecla_enter_r = b'\r'
+tecla_enter_n = b'\n'
+tecla_ctrl_c = b'\x03'
+tecla_ctrl_d = b'\x04'
+tecla_tab = b'\x09' #HT na tabela ascii
+tecla_backspace_del = b'\x7f' #forma como o linux lÊ
+tecla_backspace_bs = b'\x08' #padra asc que o windowes tambem lÊ
 
 def _obter_caractere():
-    fd = 0
+#0 = stdin
+#1 = stdout
+#2 = stderr
     try:
-        old_settings = termios.tcgetattr(fd)
-        tty.setraw(fd)
-        ch = os.read(fd, 1)
+        old_settings = termios.tcgetattr(0)
+        tty.setraw(0)
+        ch = os.read(0, 1) #leio apenas 1 byte
     except termios.error:
-        return os.read(fd, 1)
+        return os.read(0, 1)
     finally:
-        termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        termios.tcsetattr(0, termios.TCSADRAIN, old_settings)
     return ch
 
 def _listar_opcoes_autocomplete(prefixo):
+
     try:
         arquivos = os.listdir('.')
         opcoes = []
         
+        #filtro os arquivos que começam com o prefixo
         for f in arquivos:
             if f.startswith(prefixo):
                 opcoes.append(f)
@@ -33,27 +49,32 @@ def _listar_opcoes_autocomplete(prefixo):
         return []
 
 def ler_entrada():
-    buffer = "" 
+    buffer = "" # Guarda o que o usuário está digitando
     
     while True:
         try:
-            char = _obter_caractere()
+            char = _obter_caractere() #leio tecla por tecla. Quando pressionar qualquer tecla, essa será lida pela função
             
-            if char == b'\r' or char == b'\n':
-                os.write(1, b'\r\n') 
+            #se eu pressionar enter
+            if char == tecla_enter_r or char == tecla_enter_n:
+                os.write(1, b'\r\n') # Pula linha visualmente
                 break
             
-            elif char == b'\x03':
+            #se eu pressionar ctrl+c
+            elif char == tecla_ctrl_c:
                 return None
             
-            elif char == b'\x04':
+            #se eu pressionar ctrl+d
+            elif char == tecla_ctrl_d:
                 if not buffer:
                     return None
             
-
-            elif char == b'\x09': 
-                if not buffer: continue 
+            #se eu pressionar tab
+            elif char == tecla_tab:
+                if not buffer: #se o buffer estiver vazio, eu ignoro
+                    continue 
                 
+                # Pega a última palavra (ex: "cat RE" -> "RE")
                 partes = buffer.split(' ')
                 prefixo = partes[-1]
                 
@@ -61,24 +82,31 @@ def ler_entrada():
 
                 opcoes = _listar_opcoes_autocomplete(prefixo)
                 
+                #se achar apoenas uma arquivo compativel, ele autocompleta
                 if len(opcoes) == 1:
                     match = opcoes[0]
+                    #calcula o pedaço que falta digitar
                     restante = match[len(prefixo):]
+                    
+                    #adiciono barra se for diretorio, ou espaço se for arquivo
                     if os.path.isdir(match):
                         restante += "/"
                     else:
                         restante += " "
                     
-                    buffer += restante
+                    buffer = buffer + restante
                     os.write(1, restante.encode('utf-8'))
-
-            elif char == b'\x7f' or char == b'\x08':
+            
+            #se eu pressionar backspace
+            elif char == tecla_backspace_del or char == tecla_backspace_bs:
                 if len(buffer) > 0:
-                    buffer = buffer[:-1]
+                    buffer = buffer[:-1] #removo o ultimo caractere do buffer
+                    # Truque visual: Volta cursor, imprime espaço, volta cursor
                     os.write(1, b'\b \b')
+            #se eu pressionar qualquer tecla que não seja tecla especial
             else:
                 texto = char.decode('utf-8', errors='ignore')
-                buffer += texto
+                buffer = buffer + texto
                 os.write(1, char)
                 
         except OSError:
@@ -102,7 +130,7 @@ def executar_comando(args):
             path = args[1] if len(args) > 1 else os.environ.get('HOME', '.')
             os.chdir(path)
         except OSError as e:
-            msg = f"{COR_VERMELHO}cd: erro ao mudar para '{path}': {e}{COR_RESET}\n".encode('utf-8')
+            msg = f"{cor_vermelho}cd: erro ao mudar para '{path}': {e}{cor_reset}\n".encode('utf-8')
             os.write(2, msg)
         return
     
@@ -114,31 +142,31 @@ def executar_comando(args):
                 if '>' in args:
                     try:
                         idx = args.index('>')
-                        nome_arquivo = args[idx+1]
-                        args = args[:idx] 
+                        nome_arquivo = args[idx+1] 
+                        args = args[:idx]
+                        
                         fd_arquivo = os.open(nome_arquivo, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
                         
                         os.dup2(fd_arquivo, 1)
                         os.close(fd_arquivo)
                     except (ValueError, IndexError, OSError):
-                         msg = f"{COR_VERMELHO}Erro de sintaxe no redirecionamento.{COR_RESET}\n".encode('utf-8')
+                         msg = f"{cor_vermelho}Erro de sintaxe no redirecionamento.{cor_reset}\n".encode('utf-8')
                          os.write(2, msg)
                          sys.exit(1)
 
                 os.execvp(args[0], args)
                 
             except OSError:
-                erro_msg = f"{COR_VERMELHO}Erro: Comando '{args[0]}' não encontrado.{COR_RESET}\n".encode('utf-8')
+                erro_msg = f"{cor_vermelho}Erro: Comando '{args[0]}' não encontrado.{cor_reset}\n".encode('utf-8')
                 os.write(2, erro_msg)
                 sys.exit(1)
                 
         elif pid > 0:
-            # === PROCESSO PAI ===
             os.wait()
             
         else:
-            os.write(2, f"{COR_VERMELHO}Erro crítico: Falha no fork.{COR_RESET}\n".encode('utf-8'))
+            os.write(2, f"{cor_vermelho}Erro crítico: Falha no fork.{cor_reset}\n".encode('utf-8'))
 
     except OSError as e:
-        msg = f"{COR_VERMELHO}Erro de sistema: {e}{COR_RESET}\n".encode('utf-8')
+        msg = f"{cor_vermelho}Erro de sistema: {e}{cor_reset}\n".encode('utf-8')
         os.write(2, msg)
