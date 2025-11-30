@@ -20,7 +20,7 @@ tecla_tab = b'\x09' #HT na tabela ascii
 tecla_backspace_del = b'\x7f' #forma como o linux lÊ
 tecla_backspace_bs = b'\x08' #padra asc que o windowes tambem lÊ
 
-def _obter_caractere():
+def obter_caractere():
 #eu entro no modo raw do terminal para ler tecla por tecla, depois devolvo ao modo canonico
 #0 = stdin
 #1 = stdout
@@ -35,7 +35,7 @@ def _obter_caractere():
         termios.tcsetattr(0, termios.TCSADRAIN, old_settings) #retorno as configurações antigas do terminal
     return ch #retorno o byte lido
 
-def _listar_opcoes_autocomplete(prefixo):
+def listar_opcoes_autocomplete(prefixo):
 
     try:
         arquivos = os.listdir('.') #listo todos os arquivos e pastas do diretorio atual
@@ -55,7 +55,7 @@ def ler_entrada():
     
     while True:
         try:
-            char = _obter_caractere() #leio tecla por tecla
+            char = obter_caractere() #leio tecla por tecla
             
             #se eu pressionar enter
             if char == tecla_enter_r or char == tecla_enter_n:
@@ -82,7 +82,7 @@ def ler_entrada():
                 
                 if not prefixo: continue
 
-                opcoes = _listar_opcoes_autocomplete(prefixo)
+                opcoes = listar_opcoes_autocomplete(prefixo)
                 
                 #se achar apoenas uma arquivo compativel, ele autocompleta
                 if len(opcoes) == 1:
