@@ -108,8 +108,8 @@ def ler_entrada():
                     os.write(1, b'\b \b') #volta cursor, imprime espaço, volta cursor
             #se eu pressionar qualquer tecla que não seja tecla especial
             else:
-                texto = char.decode('utf-8', errors='ignore')
-                buffer = buffer + texto
+                texto = char.decode('utf-8', errors='ignore') #decodifico o byte para string
+                buffer = buffer + texto #adiciono ao buffer
                 os.write(1, char)
                 
         except OSError:
@@ -121,7 +121,7 @@ def ler_entrada():
     return buffer.strip().split()
 
 def executar_comando(args):
-    if not args:
+    if not args: #se a lista de argumentos estiver vazia, eu retorno. Serve para caso o usuario aperte enter sem digitar nada
         return
     
     if args[0] == 'exit':
@@ -138,33 +138,36 @@ def executar_comando(args):
         return
     
     try:
-        pid = os.fork()
+        pid = os.fork() #crio um novo processo
+        #pai = numero aleatorio maior que 0
+        #filho = 0
+        #print(pid)
 
-        if pid == 0:
+        if pid == 0: #rodo apenas no processo filho
             try:
                 if '>' in args:
                     try:
-                        idx = args.index('>')
-                        nome_arquivo = args[idx+1] 
-                        args = args[:idx]
+                        idx = args.index('>') #encontro o caractere >
+                        nome_arquivo = args[idx+1] #pego o nome do arquivo que vem depois do >
+                        args = args[:idx] #removo o > e o nome do arquivo dos argumentos
                         
                         fd_arquivo = os.open(nome_arquivo, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
                         
-                        os.dup2(fd_arquivo, 1)
-                        os.close(fd_arquivo)
+                        os.dup2(fd_arquivo, 1) #coloco o arquivo para 1, ou seja, para saida https://docs.python.org/pt-br/3/library/os.html#os.dup2
+                        os.close(fd_arquivo) #deleto pois não preciso de dois descritores para o mesmo arquivo
                     except (ValueError, IndexError, OSError):
                          msg = f"{cor_vermelho}Erro de sintaxe no redirecionamento.{cor_reset}\n".encode('utf-8')
                          os.write(2, msg)
                          sys.exit(1)
 
-                os.execvp(args[0], args)
+                os.execvp(args[0], args) #o clone substitui o codigo python pelo programa em args[0]
                 
-            except OSError:
+            except OSError: #trato o erro caso o comando nao seja encontrado
                 erro_msg = f"{cor_vermelho}Erro: Comando '{args[0]}' não encontrado.{cor_reset}\n".encode('utf-8')
                 os.write(2, erro_msg)
                 sys.exit(1)
                 
-        elif pid > 0:
+        elif pid > 0: #o pai dorme ate o filho terminar
             os.wait()
             
         else:
