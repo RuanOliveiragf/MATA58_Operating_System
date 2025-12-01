@@ -300,7 +300,13 @@ Saindo do shell...
 ```
 
 ## Dificuldades enfrentadas e aprendizados
+O primeiro obstáculo se deu quando foi necessário criar a funcionalidade de autocomplete. De antemão foi o shell foi feito seguindo o modo canônico, ou seja, o terminal funcionava como uma inteface não acessando direto, assim, o programa. Para que fosse possível implementarmos a funcionalidade de autocomplete, o que é essencial para uma melhor interação com o shell, foi necessário alterar para o modo Raw (ou modo cru).
 
+Ao alterarmos para esse modo, o processo de escrita dos caracteres comuns e o uso de teclas especiais como Backspace, e tab (fundamentais para a utilização do shell) se dá de forma diferente, sendo necessário assim implementarmos de forma direta no código. Assim, foi necessario a utilização da tabela ASCII para a identificação de tais teclas além de comandos e atalhos especiais como Ctrl + c.
+
+Para que fosse possível capturarmos tecla a tecla, ao invés de capturar todo o conjunto de caracteres e envia-los após apertar a tecla Enter, foi necessário salvar as configurações do modo canônico, mudar as configurações para o modo raw capturar a tecla, e então devolver as configurações originais. Para isso foi criada a função obterCaratere(). O entendimento dessa dinâmica entre o modo canônico e o modo raw foi de fundamental de importância para a construção do trabalho.
+
+Sob esse viés, outro ponto a destacar-se pela necessidade de um conhecimento relativamente mais profundo e especifico foi quanto a questão da utilização da função dup2(). Para que fosse possível implementar tal "técnica" no shell, foi necessário fazer uma manipulação com os caracteres digitados no terminal de modo a capturar exatamente as palavras necessarias para se pudesse passar o fd correto na função dup2(), de modo a permitir a troca entre o fd capturado, e o fd 1 que é referente a stdin
 
 ## Video demonstração
 
