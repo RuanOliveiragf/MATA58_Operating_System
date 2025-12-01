@@ -53,42 +53,43 @@ def listar_opcoes_autocomplete(prefixo):
 def ler_entrada():
     buffer = "" #buffer para armazenar a entrada do usuario
     
-    while True:
+    while True: #rodo até o usuario pressionar enter ou ctrl+c ou ctrl+d
         try:
             char = obter_caractere() #leio tecla por tecla
             
             #se eu pressionar enter
             if char == tecla_enter_r or char == tecla_enter_n:
-                os.write(1, b'\r\n') # Pula linha visualmente
+                os.write(1, b'\r\n') #pula linha visualmente
                 break
     
             #se eu pressionar ctrl+c 
             elif char == tecla_ctrl_c:
-                return None
+                return None #retorno None para indicar que o comando foi cancelado
             
             #se eu pressionar ctrl+d
             elif char == tecla_ctrl_d:
-                if not buffer:
-                    return None
+                if not buffer: #verifico se o buffer está vazio
+                    return None #encerro o shell
             
             #se eu pressionar tab
             elif char == tecla_tab:
                 if not buffer: #se o buffer estiver vazio, eu ignoro
                     continue 
                 
-                # Pega a última palavra (ex: "cat RE" -> "RE")
+                #pego o ultimo pedaço do buffer para autocompletar
                 partes = buffer.split(' ')
                 prefixo = partes[-1]
                 
-                if not prefixo: continue
+                if not prefixo: #se não tiver nada para autocompletar, eu ignoro
+                    continue
 
-                opcoes = listar_opcoes_autocomplete(prefixo)
+                opcoes = listar_opcoes_autocomplete(prefixo) #lista as opcoes de autocomplete, ou seja, os arquivos que eu tenho no diretorio
                 
                 #se achar apoenas uma arquivo compativel, ele autocompleta
                 if len(opcoes) == 1:
-                    match = opcoes[0]
+                    match = opcoes[0] #pego a unica opcao da lista opcoes que tecnicamente vai ser o da posicao 0
                     #calcula o pedaço que falta digitar
-                    restante = match[len(prefixo):]
+                    restante = match[len(prefixo):] #faz o match menos o prefixo para saber o que falta digitar
                     
                     #adiciono barra se for diretorio, ou espaço se for arquivo
                     if os.path.isdir(match):
@@ -96,8 +97,8 @@ def ler_entrada():
                     else:
                         restante += " "
                     
-                    buffer = buffer + restante
-                    os.write(1, restante.encode('utf-8'))
+                    buffer = buffer + restante #atualizo o buffer com o restante que falta digitar
+                    os.write(1, restante.encode('utf-8')) #mostro na tela
             
             #se eu pressionar backspace
             elif char == tecla_backspace_del or char == tecla_backspace_bs:
