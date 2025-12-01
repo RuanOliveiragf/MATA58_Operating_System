@@ -102,10 +102,10 @@ def ler_entrada():
             
             #se eu pressionar backspace
             elif char == tecla_backspace_del or char == tecla_backspace_bs:
-                if len(buffer) > 0:
+                if len(buffer) > 0: #verifico se o buffer tem algo para apagar
                     buffer = buffer[:-1] #removo o ultimo caractere do buffer
-                    # Truque visual: Volta cursor, imprime espaço, volta cursor
-                    os.write(1, b'\b \b')
+                    
+                    os.write(1, b'\b \b') #volta cursor, imprime espaço, volta cursor
             #se eu pressionar qualquer tecla que não seja tecla especial
             else:
                 texto = char.decode('utf-8', errors='ignore')
