@@ -54,160 +54,93 @@ Quando o terminal do VS Code abrir novamente, você já estará dentro do ambien
 
 -----
 
-## Estrutura do projeto
+## Estrutura do Projeto
 
-O projeto adota uma estrutura modular para desacoplar o fluxo de controle das operações de sistema. O arquivo bash_structure.py implementa o REPL (Read-Eval-Print Loop), gerenciando a interface com o usuário e a persistência do shell. O núcleo funcional reside em commands.py, que encapsula as chamadas ao sistema (syscalls), sendo responsável pelo parsing da entrada via os.read e pelo gerenciamento do ciclo de vida dos processos através de os.fork, os.execvp e os.wait.
+O projeto adota uma estrutura modular para desacoplar a interface (Frontend) da lógica de sistema operacional (Backend).
 
-O projeto é estrurado  
-
-```text
 Mini-Shell/
-├── .devcontainer/       # Configurações automáticas do VS Code (se usar Dev Containers)
-├── .dockerignore        # Lista de arquivos que o Docker deve ignorar
-├── .gitignore           # Lista de arquivos que o Git deve ignorar
-├── Dockerfile           # Configuração da imagem Linux para o projeto
-├── README.md            # Documentação, instruções e limitações
-├── bash_structure.py    # Arquivo principal (Loop principal e Prompt)
-├── commands.py          # Módulo com a lógica de fork, exec, wait, read/write
-```
+├── bash_structure.py   
+├── commands.py         
 
-## Gerenciamento de Interface e Loop Principal
+1. Arquivo bash_structure.py
 
-O arquivo bash_structure.py atua como o ponto de entrada do programa e é responsável pela interface com o usuário. Sua principal função é implementar o ciclo de vida do shell, conhecido como REPL (Read-Eval-Print Loop), garantindo que o prompt seja exibido continuamente e que os comandos sejam processados em sequência.
+Este código é responsável por manter o shell rodando e implementando as funções definidas no arquivo commands.py
 
-Abaixo, detalhamos as duas estruturas fundamentais deste módulo: a exibição do prompt via chamadas de sistema e o loop de execução.
+exibir_prompt: Exibe o usuário e o diretório atual utilizando a syscall os.getcwd() para obter o caminho e códigos de escape ANSI para as cores.
 
-### 1. Exibição do Prompt com os.write
-Diferente de scripts Python comuns que utilizam print(), este projeto utiliza a syscall os.write para manipular a saída padrão (descritor de arquivo 1). Isso garante um controle de baixo nível sobre o buffer de saída.
+main: Mantém o shell ativo indefinidamente. A cada iteração, chama commands.ler_entrada() para obter o input e commands.executar_comando() para processá-lo. O loop só é quebrado quando um sinal de término (como None vindo do ler_entrada) é recebido.
 
-```python
-def exibir_prompt():
-    # Define a mensagem do prompt. O método .encode('utf-8') é essencial
-    # pois os.write opera com bytes brutos, não strings.
-    mensagem = "> ".encode('utf-8') 
-    
-    # syscall write(fd, buffer)
-    # fd=1 representa o STDOUT (Saída Padrão/Tela)
-    os.write(1, mensagem)
-```
-Neste trecho, a função converte a string "> " para bytes antes de invocar a escrita direta no descritor de arquivo 1 (tela), cumprindo o requisito de manipulação direta de I/O.
+2. commands.py
 
-### 2. O Loop Principal (REPL)
-A função main() orquestra o funcionamento do shell. Ela mantém um laço infinito (while True) que só é interrompido quando um sinal de término é recebido. 
+Contém a lógica e as chamadas de sistema. Possui a lógica para a função de ler entrada, e exercutar o comando, sendo que, dentro de cada função (como o caso da função ler_entrada() que será mais bem especificada posteriormente) há lógicas próprias como as metodologias usadas para fazer o autocompetar, comuns a shells como power shell e git bash.
 
-```python
-def main():
-    while True:
-        # 1. Exibe o sinal de pronto para o usuário
-        exibir_prompt()
+ler_entrada(): Lê os comandos do usuário. Esta função lê byte a byte para permitir recursos como Autocomplete.
 
-        # 2. Delega a leitura e o parsing da entrada para o módulo commands
-        # Retorna uma lista de tokens (ex: ['ls', '-l']) ou None
-        comando_tokens = commands.ler_entrada()
-        
-        # 3. Critério de Parada: Se ler_entrada retornar None (ex: EOF ou erro grave),
-        # o loop é quebrado e o shell encerrado.
-        if comando_tokens is None:
-            break
-            
-        # 4. Delega a execução do processo (fork/exec/wait)
-        commands.executar_comando(comando_tokens)
+executar_comando(args): Decide se o comando é interno (built-in) ou externo e realiza as chamadas de sistema apropriadas (fork, exec, chdir, etc.).
 
-if __name__ == "__main__":
-    main()
-```
+### Detalhamento Técnico e Funcionalidades Avançadas
 
------
+1. Comandos Internos
 
-## Comandos
+Certos comandos precisam ser executados pelo próprio processo do shell, e não por um processo filho, para que suas alterações persistam, para este trabalho foram implementados dois, sendo um para a navegação entre diretórios (cd), e a saida que é o exit.
 
-O arquivo `commands.py` é responsável por interpretar e executar as ações solicitadas. A função `executar_comando(args)` decide se o comando deve ser tratado internamente pelo Python (built-in) ou se deve ser executado como um processo do sistema operacional.
+Navegação de Diretórios (cd):
 
-### 1. Comandos Internos (Built-ins)
-Certos comandos precisam alterar o estado do próprio processo do shell (como mudar de diretório ou encerrar a execução). Eles são interceptados antes da criação de novos processos.
+Implementação: Utiliza a syscall os.chdir(path).
 
-**Encerrando o Shell (`exit`)**
-Quando o usuário digita `exit`, utilizamos `sys.exit(0)` para fechar o loop principal e encerrar o programa suavemente.
+Detalhe: Se o cd fosse executado em um processo filho (com fork), apenas o filho mudaria de pasta. Quando o filho morresse, o shell (pai) continuaria na pasta antiga. Por isso, o cd é interceptado e executado diretamente no processo pai.
 
-```python
-if args[0] == 'exit':
-    # Escreve mensagem de saída no descritor 1 (stdout)
-    os.write(1, "Saindo do shell...\n".encode('utf-8'))
-    sys.exit(0) # Encerra o interpretador Python
-```
+exit:
 
-**Navegação de Diretórios** (`cd`) O comando `cd` não pode ser um binário externo, pois ele precisa mudar o diretório de trabalho do processo atual (o shell). Utilizamos `os.chdir` para isso.
+Implementação: Utiliza sys.exit(0).
 
-```python
-if args[0] == 'cd':
-    try:
-        # Se o usuário não passar argumentos (apenas 'cd'), vai para a HOME
-        # Se passar argumentos (ex: 'cd /tmp'), usa args[1]
-        path = args[1] if len(args) > 1 else os.environ.get('HOME', '.')
-        
-        # Syscall que altera o diretório de trabalho do processo atual
-        os.chdir(path)
-    except OSError as e:
-        # Em caso de erro, como diretório inexistente
-        msg = f"cd: erro ao mudar para '{path}': {e}\n".encode('utf-8')
-        os.write(2, msg)
-    return
-```
+Detalhe: Encerra o interpretador Python de forma limpa, retornando o código de status 0 (sucesso) para o sistema operacional.
 
-### 2. Execução de Comandos Externos (Fork, Exec, Wait)
-Para comandos do sistema (como ls, cat, echo), utilizamos o modelo clássico do Unix de criação de processos. Isso envolve três chamadas de sistema principais coordenadas dentro da função executar_comando:
+2. Leitura em Modo Raw e Autocomplete utilizando a tecla TAB
 
-1. `os.fork()`: Clona o processo atual.
+Para implementar o Autocomplete, não é possível utiliazr o modo canonico, sendo assim necessario mudar para o modo raw uma vez que precisamos capturar aquilo que é digitado logo após o usuário pressionar a tecla, ao invés de capturar todo o conjunto de caracteres no final após pressionar a tecla enter.
 
-2. `os.execvp()`: Substitui o processo clonado pelo comando desejado.
+Manipulação de TTY (termios e tty): Utilizamos tty.setraw(0) para colocar o terminal em modo raw. Isso permite ler cada tecla (os.read(0, 1)) no instante em que é pressionada.
 
-3. `os.wait()`: Faz o processo original esperar o término do clonado.
+Lógica do TAB: Ao detectar o byte \x09 (TAB), o shell analisa o buffer atual, varre o diretório com os.listdir() e completa automaticamente o nome do arquivo ou pasta correspondente.
 
-```python
-try:
-    # 1. FORK: Cria uma cópia idêntica do processo atual.
-    # A partir daqui, temos dois processos rodando o mesmo código simultaneamente.
-    # pid retorna 0 para o processo novo (Filho) e > 0 para o processo original (Pai).
-    pid = os.fork() 
+Edição Manual: Como o modo Raw desativa o processamento padrão, reimplementamos manualmente a lógica do Backspace (\x7f e \x08) para apagar caracteres do buffer e atualizar a tela visualmente.
 
-    if pid == 0: # Processo Filho
-        try:
-            # 2. EXEC: Substitui a código do filho pelo código/programa 'args[0]'
-            # args é a lista de argumentos (ex: ['ls', '-la'])
-            os.execvp(args[0], args)
-        except OSError:
-            # Se o exec falhar, imprime erro e mata o filho
-            erro_msg = f"Erro: Comando '{args[0]}' não encontrado.\n".encode('utf-8')
-            os.write(2, erro_msg)
-            sys.exit(1) # Encerra o filho com erro
-            
-    elif pid > 0: # Processo Pai 
-        # 3. WAIT: O Shell dorme e aguarda o filho (pid > 0) terminar sua execução.
-        os.wait()
-        
-    else:
-        # Caso onde o sistema operacional falha ao criar um processo
-        os.write(2, "Erro crítico: Falha no fork.\n".encode('utf-8'))
+3. Redirecionamento de Saída (dup2)
 
-except OSError as e:
-    msg = f"Erro de sistema: {e}\n".encode('utf-8')
-    os.write(2, msg)
-```
+O shell suporta o operador > para salvar a saída de comandos em arquivos (ex: ls > log.txt).
 
------
+Detecção: O parser identifica o símbolo > e o nome do arquivo de destino.
 
-## 💻 Executando o Shell
-1.  Abra o terminal integrado (`Ctrl + J`).
-2.  Execute o shell com o comando
-    ```bash
-    python3 bash_structure.py
-    ```
-3.  O prompt ` >  ` aparecerá. Você pode testar comandos como:
-      * `ls -l`
-      * `echo Ola Mundo`
-      * `cat README.md`
-      * `exit` (para sair)
------
+Manipulação dos fd's:
+
+Abre o arquivo alvo com os.open, obtendo um novo File Descriptor (ex: FD 3).
+
+Utiliza a syscall os.dup2(fd_arquivo, 1) para substituir a Saída Padrão (FD 1 - Tela) pelo FD do arquivo.
+
+Quando o comando (ex: ls) é executado, ele escreve no FD 1, mas os dados são desviados transparentemente para o arquivo.
+
+4. Gerenciamento de Processos usando comandos externos
+
+O ciclo de vida clássico do Unix é mantido para execução de comandos externos (como ls, cat, echo):
+
+os.fork(): Cria um processo clone (Filho).
+
+os.execvp(): O Filho substitui sua imagem de memória pelo programa desejado.
+
+os.wait(): O Pai suspende a execução até que o Filho termine.
+
+Chamadas de sistemas utilizadas:
+
+Gerenciamento de Processos: fork, execvp, wait.
+
+Sistema de Arquivos: chdir (cd), getcwd (prompt), listdir (autocomplete), open (redirecionamento).
+
+Entrada/Saída (I/O): read, write, dup2 (redirecionamento), close.
+
+Exemplos de Comandos Testados e Saídas
+
+Abaixo, um log demonstrando as capacidades do shell, incluindo cores, autocomplete e redirecionamento.
 
 ## Exemplos
 
