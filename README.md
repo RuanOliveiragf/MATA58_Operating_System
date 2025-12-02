@@ -144,9 +144,34 @@ Abaixo, um log demonstrando as capacidades do shell, incluindo cores, autocomple
 
 ## Exemplos
 
-Abaixo apresentamos um log real de uso do shell, demonstrando a execução de comandos externos, manipulação de arquivos, navegação de diretórios e tratamento de erros. Note que os números exibidos antes da saída (ex: `9534`, `0`) correspondem aos PIDs dos processos criados via `fork()`.
+Abaixo encontra-se o um exemplo de utilização do shell. É possível encontrar comandos como "cd" e "exit", os quais foram implementados manualmente, e também comandos como ls, e também echo. Também é demonstado a utilização da função dup2() atraves da linha "> echo escrituraTeste2 > testeDemonstracao.txt" onde a saida de dados que seria exibida vinda do comando echo, é na verdade implementada no arquivo txt gerado (testeDemonstracao.txt)
 
-
+ruan@GolQuadrado:/mnt/c/Git_reps/MATA58_Operating_System$ python3 bash_structure.py 
+> testandoComando
+Erro: Comando 'testandoComando' não encontrado.
+> teste
+Erro: Comando 'teste' não encontrado.
+> echo teste
+teste
+> ls
+README.md  README.txt  __pycache__  bash_structure.py  command_AC.py  commands.py  test_token.py  teste.txt
+> cd ..
+> ls
+AV3_eng_de_software  Atividade_1_LAB_3  ENGG54_LAB_3_PROJECT  ENGG64_Activities  MATA58_Operating_System  lab3_dsp_project  so_atvd_5
+> cd MATA58_Operating_System/
+> ls
+README.md  README.txt  __pycache__  bash_structure.py  command_AC.py  commands.py  test_token.py  teste.txt
+> echo escrituraTeste > teste.txt
+> echo esctituraTeste2 > testeDemonstacao.txt
+> ls
+README.md  README.txt  __pycache__  bash_structure.py  command_AC.py  commands.py  test_token.py  teste.txt  testeDemonstacao.txt
+> cd ..
+> cd ..
+> ls
+'$Recycle.Bin'   AMD                     'Documents and Settings'   DumpStack.log.tmp   MSI            PerfLogs        'Program Files (x86)'   RHDSetup.log  'System Volume Information'   Windows   hiberfil.sys   intelFPGA_lite   swapfile.sys
+'$WINDOWS.~BT'  'Arquivos de Programas'   DumpStack.log             Git_reps            OneDriveTemp  'Program Files'   ProgramData            Recovery       Users                        flexlm    inetpub        pagefile.sys     ti
+> exit
+Saindo do shell...
 
 ## Dificuldades enfrentadas e aprendizados
 O primeiro obstáculo se deu quando foi necessário criar a funcionalidade de autocomplete. De antemão foi o shell foi feito seguindo o modo canônico, ou seja, o terminal funcionava como uma inteface não acessando direto, assim, o programa. Para que fosse possível implementarmos a funcionalidade de autocomplete, o que é essencial para uma melhor interação com o shell, foi necessário alterar para o modo Raw (ou modo cru).
