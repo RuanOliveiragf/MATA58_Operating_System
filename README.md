@@ -183,5 +183,4 @@ Para que fosse possível capturarmos tecla a tecla, ao invés de capturar todo o
 Sob esse viés, outro ponto a destacar-se pela necessidade de um conhecimento relativamente mais profundo e especifico foi quanto a questão da utilização da função dup2(). Para que fosse possível implementar tal "técnica" no shell, foi necessário fazer uma manipulação com os caracteres digitados no terminal de modo a capturar exatamente as palavras necessarias para se pudesse passar o fd correto na função dup2(), de modo a permitir a troca entre o fd capturado, e o fd 1 que é referente a stdin
 
 ## Video demonstração
-
-
+https://youtu.be/RW-IxuAWX8U
